@@ -2,7 +2,9 @@ import json
 import requests
 
 from datetime import datetime
-from flask import Flask
+#from flask import Flask
+from fastapi import FastAPI
+from pydantic import BaseModel
 
 date = datetime.now()
 date_for_cnb_url = date.year + date.month + date.day
@@ -10,10 +12,30 @@ date_for_cnb_url = date.year + date.month + date.day
 cnb_url = f"https://data.kurzy.cz/json/meny/b[6]den[{date_for_cnb_url}].json"
 coinbase_url = "https://api.coindesk.com/v1/bpi/currentprice.json"
  
-app = Flask(__name__)
+#app = Flask(__name__)
+app = FastAPI()
+
+
+# Classes for the nested JSON response
+class CurencySchema(BaseModel):
+    #General contents of a currency
+
+    request_time: str
+    response_time: datetime
+    EUR: float
+    CZK: float
+
+class BTC(BaseModel):
+    # BTC schema
+
+    BTC: CurencySchema
+
  
-@app.route('/btc_info')
+@app.get('/btc_info', response_model=BTC)
 def exchange():
+    """
+    Gets BTC price from COINBASE, and returns prices in in EUR and CZK
+    """
 
     request_time = datetime.utcnow().isoformat()
 
@@ -27,20 +49,15 @@ def exchange():
     
     data = {
                 "BTC": {
-                        "request_time": f"{request_time}",
+                        "request_time": request_time,
                         "response_time": bpi['time']['updatedISO'],
                         "EUR": bpi_eur_val,
                         "CZK": bpi_eur_val*rate_eur_to_czk
                         }}
 
-                        
-    response = app.response_class(
-        response=json.dumps(data),
-        status=200,
-        mimetype='application/json'
-    )
+        
 
-    return response
+    return data
  
 # main driver function
 if __name__ == '__main__':
